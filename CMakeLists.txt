@@ -11,10 +11,24 @@ if(NOT CMAKE_VERSION VERSION_LESS 3.1)
   cmake_policy(SET CMP0054 NEW)
 endif()
 
-project(GLAD VERSION 0.1.33 LANGUAGES C)
+if(CMAKE_VERSION VERSION_GREATER 3.8)
+  # Enable IPO for CMake versions that support it
+  cmake_policy(SET CMP0069 NEW)
+endif()
+
+project(GLAD VERSION 0.1.34 LANGUAGES C)
 
 set(GLAD_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-find_package(PythonInterp REQUIRED)
+
+# Find the python interpreter, set the PYTHON_EXECUTABLE variable
+if (CMAKE_VERSION VERSION_LESS 3.12)
+    # this logic is deprecated in CMake after 3.12
+    find_package(PythonInterp REQUIRED)
+else()
+    # the new hotness.  This will preferentially find Python3 instead of Python2
+    find_package(Python)
+    set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
+endif()
 
 # Options
 set(GLAD_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}" CACHE STRING "Output directory")
@@ -23,6 +37,7 @@ set(GLAD_API "" CACHE STRING "API type/version pairs, like \"gl=3.2,gles=\", no 
 set(GLAD_GENERATOR "c" CACHE STRING "Language to generate the binding for")
 set(GLAD_EXTENSIONS "" CACHE STRING "Path to extensions file or comma separated list of extensions, if missing all extensions are included")
 set(GLAD_SPEC "gl" CACHE STRING "Name of the spec")
+option(GLAD_ALL_EXTENSIONS "Include all extensions instead of those specified by GLAD_EXTENSIONS" OFF)
 option(GLAD_NO_LOADER "No loader" OFF)
 option(GLAD_REPRODUCIBLE "Reproducible build" OFF)
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
@@ -64,6 +79,9 @@ else()
   )
 endif()
 
+if(NOT GLAD_ALL_EXTENSIONS)
+  set(GLAD_EXTENSIONS_ARG "--extensions=${GLAD_EXTENSIONS}")
+endif()
 if(GLAD_NO_LOADER)
    set(GLAD_NO_LOADER_ARG "--no-loader")
 endif()
@@ -78,7 +96,7 @@ add_custom_command(
     --out-path=${GLAD_OUT_DIR}
     --api=${GLAD_API}
     --generator=${GLAD_GENERATOR}
-    --extensions=${GLAD_EXTENSIONS}
+    ${GLAD_EXTENSIONS_ARG}
     --spec=${GLAD_SPEC}
     ${GLAD_NO_LOADER_ARG}
     ${GLAD_REPRODUCIBLE_ARG}
@@ -91,9 +109,7 @@ add_library(glad ${GLAD_SOURCES})
 add_dependencies(glad glad-generate-files)
 target_include_directories(glad
     PUBLIC
-        $<BUILD_INTERFACE:${GLAD_INCLUDE_DIRS}>
-    INTERFACE
-        $<INSTALL_INTERFACE:include/glad>)
+        $<BUILD_INTERFACE:${GLAD_INCLUDE_DIRS}>)
 
 # Are we building a shared library?
 get_target_property(library_type glad TYPE)
@@ -134,7 +150,7 @@ endif()
 # Install
 if(GLAD_INSTALL)
 
-  set(config_install_dir "lib/cmake/glad")
+  set(config_install_dir lib/cmake/glad)
   set(version_config "${CMAKE_CURRENT_BINARY_DIR}/gladConfigVersion.cmake")
   set(project_config "${CMAKE_CURRENT_BINARY_DIR}/gladConfig.cmake")
   set(targets_export_name "gladTargets")
@@ -158,26 +174,25 @@ if(GLAD_INSTALL)
   install(
     TARGETS glad
     EXPORT "${targets_export_name}"
-    LIBRARY DESTINATION "lib"
-    ARCHIVE DESTINATION "lib"
-    RUNTIME DESTINATION "bin"
-    INCLUDES DESTINATION "include")
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin)
 
-  if(GLAD_INCLUDE_DIRS)
-    install(
-      DIRECTORY ${GLAD_INCLUDE_DIRS}
-      DESTINATION ${CMAKE_INSTALL_PREFIX})
-  endif()
+  install(FILES ${GLAD_INCLUDE_DIRS}/glad/glad.h
+    DESTINATION include/glad)
+
+  install(FILES ${GLAD_INCLUDE_DIRS}/KHR/khrplatform.h
+    DESTINATION include/KHR)
 
   # Install gladConfig.cmake, gladConfigVersion.cmake
   install(
     FILES "${project_config}" "${version_config}"
-    DESTINATION "${config_install_dir}")
+    DESTINATION ${config_install_dir})
 
   # Create and install gladTargets.cmake
   install(
     EXPORT "${targets_export_name}"
     NAMESPACE "${namespace}"
-    DESTINATION "${config_install_dir}")
+    DESTINATION ${config_install_dir})
 
 endif()
