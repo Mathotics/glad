@@ -52,7 +52,7 @@ typedef unsigned __int64 uint64_t;
 #endif]]></type>
         <type name="int32_t" requires="inttypes"/>
         <type name="int64_t" requires="inttypes"/>
-            <!-- Dummy placeholders for X types -->
+            <!-- Dummy placeholders for X / OpenGL types -->
         <type name="Bool"/>
         <type name="Colormap"/>
         <type name="Display"/>
@@ -61,6 +61,7 @@ typedef unsigned __int64 uint64_t;
         <type name="Screen"/>
         <type name="Status"/>
         <type name="Window"/>
+        <type name="XID"/>
         <type name="XVisualInfo"/>
         <type name="GLbitfield"/>
         <type name="GLboolean"/>
@@ -1759,6 +1760,11 @@ typedef unsigned __int64 uint64_t;
         <extension name="GLX_EXT_framebuffer_sRGB" supported="glx">
             <require>
                 <enum name="GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT"/>
+            </require>
+        </extension>
+        <extension name="GLX_EXT_get_drawable_type" supported="glx">
+            <require>
+                <enum name="GLX_DRAWABLE_TYPE"/>
             </require>
         </extension>
         <extension name="GLX_EXT_import_context" supported="glx">
